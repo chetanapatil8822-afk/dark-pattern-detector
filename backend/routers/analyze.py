@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from backend.services.ai_analyzer import (
     calculate_credibility_score,
     get_severity_label
 )
+from backend.services.demo_results import DEMO_MODE, DEMO_RESULTS
 from backend.models.models import AnalysisResult, DetectedPattern
 
 router = APIRouter()
@@ -31,9 +33,12 @@ class TextAnalysisRequest(BaseModel):
 def save_analysis(db, url, domain, ai_result, patterns, duration):
     """Helper to save analysis and patterns to DB"""
     credibility_score = ai_result.get(
-        "overall_credibility_score",
+    "overall_credibility_score",
+    ai_result.get(
+        "credibility_score",
         calculate_credibility_score(patterns)
     )
+)
 
     db_analysis = AnalysisResult(
         url=url,
@@ -68,13 +73,13 @@ def save_analysis(db, url, domain, ai_result, patterns, duration):
 @router.post("/url")
 async def analyze_url(request: URLAnalysisRequest, db: Session = Depends(get_db)):
     """Analyze a website URL for dark patterns"""
+
     start_time = time.time()
     url = request.url.strip()
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
-    # Scrape website
     scraped = await scrape_website(url)
 
     if scraped.get("error") and not scraped.get("content"):
@@ -83,29 +88,62 @@ async def analyze_url(request: URLAnalysisRequest, db: Session = Depends(get_db)
             detail=f"Could not access website: {scraped['error']}"
         )
 
-    # AI Analysis
     content_to_analyze = scraped.get("content", "")
-    ai_result = await analyze_with_gemini(content_to_analyze, url)
 
-    patterns = ai_result.get("dark_patterns", [])
-    duration = round(time.time() - start_time, 2)
     domain = extract_domain(url)
 
-    db_analysis, credibility_score = save_analysis(db, url, domain, ai_result, patterns, duration)
+    # Temporary reference/demo mode
+    if DEMO_MODE and domain in DEMO_RESULTS:
+        ai_result = DEMO_RESULTS[domain]
+    else:
+        ai_result = await analyze_with_gemini(
+            content_to_analyze,
+            url
+        )
+
+    patterns = ai_result.get("dark_patterns", [])
+
+    duration = round(
+        time.time() - start_time,
+        2
+    )
+
+    db_analysis, credibility_score = save_analysis(
+        db,
+        url,
+        domain,
+        ai_result,
+        patterns,
+        duration
+    )
 
     return {
         "analysis_id": db_analysis.id,
         "url": url,
         "domain": domain,
         "page_title": ai_result.get("page_title", domain),
-        "industry_category": ai_result.get("industry_category", "unknown"),
+        "industry_category": ai_result.get(
+            "industry_category",
+            "unknown"
+        ),
         "credibility_score": credibility_score,
-        "credibility_label": get_severity_label(float(credibility_score)),
+        "credibility_label": get_severity_label(
+            float(credibility_score)
+        ),
         "total_patterns_found": len(patterns),
         "dark_patterns": patterns,
-        "positive_practices": ai_result.get("positive_practices", []),
-        "recommendations": ai_result.get("recommendations", []),
-        "summary": ai_result.get("summary", "Analysis complete."),
+        "positive_practices": ai_result.get(
+            "positive_practices",
+            []
+        ),
+        "recommendations": ai_result.get(
+            "recommendations",
+            []
+        ),
+        "summary": ai_result.get(
+            "summary",
+            "Analysis complete."
+        ),
         "analysis_duration_seconds": duration
     }
 

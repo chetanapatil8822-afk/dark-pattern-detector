@@ -5,6 +5,10 @@ from backend.utils.db import get_db
 from backend.models.models import AnalysisResult, DetectedPattern, CommunityReport
 from datetime import datetime, timedelta
 
+import os
+
+from backend.services.spark_analytics import get_bda_summary
+
 router = APIRouter()
 
 @router.get("/summary")
@@ -130,3 +134,47 @@ async def get_top_patterns(limit: int = 5, db: Session = Depends(get_db)):
         }
         for p in patterns
     ]
+
+@router.get("/bda")
+async def get_bda_analytics():
+    """
+    Run PySpark-based Big Data analytics
+    on the dark pattern analysis database.
+    """
+
+    # Project root -> darkpattern.db
+    project_root = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            ".."
+        )
+    )
+
+    db_path = os.path.join(
+        project_root,
+        "darkpattern.db"
+    )
+
+    if not os.path.exists(db_path):
+        return {
+            "error": "darkpattern.db not found",
+            "db_path": db_path
+        }
+
+    try:
+        bda_result = get_bda_summary(db_path)
+
+        return {
+            "status": "success",
+            "engine": "PySpark",
+            "database": "darkpattern.db",
+            "data": bda_result
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "engine": "PySpark",
+            "error": str(e)
+        }

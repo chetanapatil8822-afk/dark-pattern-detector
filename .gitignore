@@ -38,3 +38,4 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
+desktop.ini

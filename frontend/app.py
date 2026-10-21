@@ -209,12 +209,10 @@ with st.sidebar:
     </div>""", unsafe_allow_html=True)
 
     page = st.radio("Navigation", [
-        "🔎 Analyze Website",
-        "📝 Paste Content",
-        "🗄️ Pattern Database",
-        "📊 Analytics",
-        "🏆 Worst Offenders"
-    ], label_visibility="collapsed")
+    "🔎 Analyze Website",
+    "📝 Paste Content",
+    "📊 Analytics"
+], label_visibility="collapsed")
 
     st.divider()
     st.markdown("""
@@ -224,14 +222,6 @@ with st.sidebar:
     🪤 Roach Motel<br>👁️ Misdirection<br>🔄 Forced Continuity<br>
     ⭐ Fake Social Proof<br>😔 Confirm Shaming<br>
     📢 Disguised Ads<br>🔒 Privacy Zuckering
-    </div>""", unsafe_allow_html=True)
-
-    st.divider()
-    st.markdown("""
-    <div style="font-size:0.7rem;color:#444;text-align:center;line-height:1.7;">
-    FastAPI · PostgreSQL · Gemini AI<br>Streamlit · Docker<br><br>
-    <a href="https://github.com/niranjan-n-s/dark-pattern-detector" style="color:#6d28d9;">
-    github.com/niranjan-n-s</a>
     </div>""", unsafe_allow_html=True)
 
 
@@ -482,22 +472,7 @@ elif page == "📊 Analytics":
             fig3.update_yaxes(gridcolor="#1e1e3a")
             st.plotly_chart(fig3, use_container_width=True)
 
-        # Recent history
-        st.markdown("### 📜 Recent Analysis History")
-        hist, _ = api_call("/analyze/history?limit=10")
-        if hist:
-            for item in hist:
-                sc   = item.get("credibility_score", 0) or 0
-                col  = score_color(sc)
-                date = str(item.get("analysis_date",""))[:10]
-                st.markdown(f"""<div style="background:#0d0d1a;border:1px solid #1e1e3a;border-radius:8px;padding:9px 16px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;">
-                <div><span style="color:#a78bfa;font-weight:600;">{item.get('domain','N/A')}</span>
-                <span style="color:#555;font-size:0.78rem;margin-left:8px;">{str(item.get('industry_category','')).title()}</span></div>
-                <div><span style="color:{col};font-weight:700;">{int(sc)}/100</span>
-                <span style="color:#555;font-size:0.76rem;margin-left:8px;">{item.get('total_patterns_found',0)} patterns · {date}</span></div>
-                </div>""", unsafe_allow_html=True)
-        else:
-            st.info("No analyses yet. Analyze some websites to see history here.")
+    
 
 
 # ══════════════════════════════════════════════════════════════════════════════
